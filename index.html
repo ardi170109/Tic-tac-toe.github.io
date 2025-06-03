@@ -1,0 +1,238 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: linear-gradient(to right, #e66465, #9198e5);
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      color: white;
+    }
+    #controls {
+      margin: 20px;
+    }
+    #controls button,
+    #reset-controls button,
+    #popup-content button {
+      padding: 10px 15px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(45deg, #36d1dc, #5b86e5);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      transition: transform 0.2s, background 0.3s;
+    }
+    #controls button:hover,
+    #reset-controls button:hover,
+    #popup-content button:hover {
+      transform: scale(1.05);
+      background: linear-gradient(45deg, #5b86e5, #36d1dc);
+    }
+    #board {
+      display: grid;
+      gap: 5px;
+      justify-content: center;
+      margin: 0 auto;
+      max-width: 90vw;
+    }
+    .cell {
+      background-color: white;
+      border-radius: 10px;
+      font-size: 12vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      aspect-ratio: 1 / 1;
+      cursor: pointer;
+    }
+    #status, #score {
+      margin-top: 10px;
+      font-weight: bold;
+      color: white;
+    }
+    #popup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    #popup-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    #reset-controls {
+      margin-top: 10px;
+    }
+    footer {
+      margin-top: 30px;
+      padding: 10px;
+      color: white;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tic Tac Toe</h1>
+  <div id="controls">
+    <button onclick="startGame(3, false)">Multiplayer 3x3</button>
+    <button onclick="startGame(4, false)">Multiplayer 4x4</button>
+    <button onclick="startGame(3, true)">AI 3x3</button>
+    <button onclick="startGame(4, true)">AI 4x4</button>
+  </div>
+  <div id="board"></div>
+  <div id="status"></div>
+  <div id="score"></div>
+  <div id="reset-controls">
+    <button onclick="resetGame()">Reset Permainan</button>
+    <button onclick="resetScore()">Reset Poin</button>
+  </div>
+  <div id="popup">
+    <div id="popup-content">
+      <p id="popup-message"></p>
+      <button onclick="closePopup()">OK</button>
+    </div>
+  </div>
+  <footer>
+    by: Ardi Safwan Maulana
+  </footer>
+  <script>
+    let boardSize = 3;
+    let board = [];
+    let currentPlayer = "X";
+    let gameOver = false;
+    let aiMode = false;
+    let scores = { "X": 0, "O": 0 };
+    let moveHistory = [];const symbols = {
+  "X": "❌",
+  "O": "⭕"
+};
+
+function startGame(size, vsAI) {
+  boardSize = size;
+  aiMode = vsAI;
+  board = Array.from({ length: size }, () => Array(size).fill(""));
+  currentPlayer = "X";
+  gameOver = false;
+  moveHistory = [];
+  drawBoard();
+  updateStatus();
+}
+
+function drawBoard() {
+  const boardElement = document.getElementById("board");
+  boardElement.innerHTML = "";
+  boardElement.style.gridTemplateColumns = `repeat(${boardSize}, 1fr)`;
+  board.forEach((row, r) => {
+    row.forEach((cell, c) => {
+      const div = document.createElement("div");
+      div.className = "cell";
+      div.textContent = symbols[cell] || "";
+      div.onclick = () => makeMove(r, c);
+      boardElement.appendChild(div);
+    });
+  });
+}
+
+function makeMove(row, col) {
+  if (gameOver || board[row][col]) return;
+  board[row][col] = currentPlayer;
+  moveHistory.push({ player: currentPlayer, row, col });
+
+  const limit = boardSize;
+  const playerMoves = moveHistory.filter(m => m.player === currentPlayer);
+  if (playerMoves.length > limit) {
+    const removed = playerMoves[0];
+    board[removed.row][removed.col] = "";
+    moveHistory = moveHistory.filter(m => !(m.player === currentPlayer && m.row === removed.row && m.col === removed.col));
+  }
+
+  drawBoard();
+
+  if (checkWin(row, col)) {
+    gameOver = true;
+    scores[currentPlayer]++;
+    showPopup(`Pemain ${symbols[currentPlayer]} menang!`);
+    return;
+  }
+
+  if (board.flat().every(c => c)) {
+    gameOver = true;
+    showPopup("Seri!");
+    return;
+  }
+
+  currentPlayer = currentPlayer === "X" ? "O" : "X";
+  updateStatus();
+
+  if (aiMode && currentPlayer === "O" && !gameOver) {
+    setTimeout(aiMove, 300);
+  }
+}
+
+function aiMove() {
+  let empty = [];
+  board.forEach((row, r) =>
+    row.forEach((cell, c) => {
+      if (!cell) empty.push([r, c]);
+    })
+  );
+  if (empty.length) {
+    let [r, c] = empty[Math.floor(Math.random() * empty.length)];
+    makeMove(r, c);
+  }
+}
+
+function checkWin(row, col) {
+  const p = board[row][col];
+  const rowWin = board[row].every(cell => cell === p);
+  const colWin = board.every(r => r[col] === p);
+  const diag1 = row === col && board.every((r, i) => r[i] === p);
+  const diag2 = row + col === boardSize - 1 && board.every((r, i) => r[boardSize - 1 - i] === p);
+  return rowWin || colWin || diag1 || diag2;
+}
+
+function resetGame() {
+  startGame(boardSize, aiMode);
+}
+
+function resetScore() {
+  scores = { "X": 0, "O": 0 };
+  updateScore();
+}
+
+function showPopup(msg) {
+  document.getElementById("popup-message").textContent = msg;
+  updateScore();
+  document.getElementById("popup").style.display = "flex";
+}
+
+function closePopup() {
+  document.getElementById("popup").style.display = "none";
+  resetGame();
+}
+
+function updateStatus() {
+  document.getElementById("status").textContent = `Giliran: ${symbols[currentPlayer]}`;
+}
+
+function updateScore() {
+  document.getElementById("score").innerHTML = `Poin - ${symbols["X"]}: ${scores["X"]} | ${symbols["O"]}: ${scores["O"]}`;
+}
+
+  </script>
+</body>
+</html>
